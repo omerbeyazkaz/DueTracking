@@ -113,7 +113,7 @@ class _PaymentPageState extends State<PaymentPage> {
                                       children: [
                                         
                                         Expanded(
-                                          flex: 2,
+                                          flex: 3,
                                           child: _buildDropdownField(
                                             label: "Ay",
                                             items: List.generate(
