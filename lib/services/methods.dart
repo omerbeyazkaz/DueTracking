@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
 class Methods {
   // Duyuruları çekmek için metod
   static Future<List<Map<String, dynamic>>> getAnnouncements(String siteId) async {
@@ -92,4 +93,7 @@ class Methods {
       return [];
     }
   }
+
+ 
 }
+

@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../services/methods.dart'; // Firebase metotları için
-import 'announcement_page.dart'; // Tüm duyurular
-import 'requests_page.dart'; // Tüm talepler
+import '../services/methods.dart';
+import 'announcement_page.dart';
+import 'requests_page.dart';
 
 class HomePageContent extends StatefulWidget {
   @override
@@ -20,17 +22,27 @@ class _HomePageContentState extends State<HomePageContent> {
   }
 
   Future<void> fetchData() async {
-    final siteId = 'site_123'; // Giriş yapan kullanıcının siteId’si
-    final userId = 'user_abc'; // Giriş yapan kullanıcının userId’si
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
 
-    final anns = await Methods.getAnnouncements(siteId);
-    final reqs = await Methods.getRequests(userId);
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
-    setState(() {
-      _announcements = anns;
-      _requests = reqs;
-      _loading = false;
-    });
+      if (!userDoc.exists) return;
+
+      final siteId = userDoc.data()?['siteID'];
+      final anns = await Methods.getAnnouncements(siteId);
+      final reqs = await Methods.getRequests(uid);
+
+      setState(() {
+        _announcements = anns;
+        _requests = reqs;
+        _loading = false;
+      });
+    } catch (e) {
+      print("Hata: $e");
+    }
   }
 
   @override
@@ -85,9 +97,13 @@ class _HomePageContentState extends State<HomePageContent> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: _requests.map((item) {
-                        return _buildRequestCard(
-                          item['title'] ?? '',
-                          item['description'] ?? '',
+                        return Container(
+                          width: MediaQuery.of(context).size.width * 0.4, // Dynamic width
+                          margin: EdgeInsets.only(right: 16),
+                          child: _buildRequestCard(
+                            item['title'] ?? '',
+                            item['description'] ?? '',
+                          ),
                         );
                       }).toList(),
                     ),
@@ -101,17 +117,23 @@ class _HomePageContentState extends State<HomePageContent> {
   Widget _buildSectionHeader(BuildContext context,
       {required String title, required VoidCallback onTap}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        GestureDetector(
-          onTap: onTap,
-          child: Text("Hepsini Gör",
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue)),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        TextButton(
+          onPressed: onTap,
+          child: Text(
+            "Hepsini Gör",
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
         ),
       ],
     );
@@ -125,28 +147,31 @@ class _HomePageContentState extends State<HomePageContent> {
       ),
       padding: EdgeInsets.all(16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Güncel Tutar", style: TextStyle(color: Colors.white)),
-              SizedBox(height: 4),
-              Text("850 TL",
-                  style: TextStyle(
-                      fontSize: 28,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, color: Colors.white70, size: 16),
-                  SizedBox(width: 4),
-                  Text("Son Ödeme Tarihi: 30.03.2022",
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ],
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Güncel Tutar", style: TextStyle(color: Colors.white)),
+                SizedBox(height: 4),
+                Text("850 TL",
+                    style: TextStyle(
+                        fontSize: 28,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today,
+                        color: Colors.white70, size: 16),
+                    SizedBox(width: 4),
+                    Text("Son Ödeme Tarihi: 30.03.2022",
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -167,33 +192,62 @@ class _HomePageContentState extends State<HomePageContent> {
 
   Widget _buildAnnouncementCard(String title, String date) {
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: Icon(Icons.info_outline, color: Colors.blue),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(date),
+      margin: EdgeInsets.symmetric(vertical: 6),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Icon(Icons.campaign, color: Colors.blueAccent),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 4),
+                  Text(date,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildRequestCard(String title, String description) {
     return Container(
-      width: 150,
-      margin: EdgeInsets.only(right: 16),
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          Text(description),
+          Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          SizedBox(height: 6),
+          Text(
+            description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.grey[700]),
+          ),
         ],
       ),
     );
